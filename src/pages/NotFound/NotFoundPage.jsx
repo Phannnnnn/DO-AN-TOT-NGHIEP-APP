@@ -1,76 +1,117 @@
-import React from "react";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft, Home, BedDouble } from "lucide-react";
 
 const NotFoundPage = () => {
-  const handleGoHome = () => {
-    window.location.href = "/";
-  };
-
-  const handleGoBack = () => {
-    window.history.back();
-  };
+  const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[var(--black)] via-gray-900 to-[var(--black)] flex items-center justify-center p-4 overflow-hidden relative">
-      {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-[var(--blue)]/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[var(--red)]/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+    <div className="min-h-screen bg-[#0a1628] flex items-center justify-center px-6 relative overflow-hidden">
+      {/* Background glow */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div
+          className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full opacity-20"
+          style={{
+            background:
+              "radial-gradient(ellipse, rgba(245,158,11,0.4) 0%, transparent 70%)",
+          }}
+        />
+        <div
+          className="absolute bottom-0 left-0 w-96 h-96 rounded-full opacity-10"
+          style={{
+            background:
+              "radial-gradient(ellipse, rgba(245,158,11,0.3) 0%, transparent 70%)",
+          }}
+        />
       </div>
 
-      <div className="relative z-10 max-w-2xl w-full text-center">
-        {/* Film icon animation */}
+      {/* Dot pattern */}
+      <svg
+        className="absolute inset-0 w-full h-full opacity-[0.04]"
+        preserveAspectRatio="none"
+      >
+        <defs>
+          <pattern
+            id="dots"
+            width="32"
+            height="32"
+            patternUnits="userSpaceOnUse"
+          >
+            <circle cx="2" cy="2" r="1.5" fill="white" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#dots)" />
+      </svg>
+
+      <div className="relative z-10 text-center max-w-lg w-full">
+        {/* Icon */}
         <div className="flex justify-center mb-8">
           <div className="relative">
-            <div className="absolute inset-0 bg-[var(--blue)]/20 rounded-full blur-xl animate-pulse"></div>
+            <div className="w-24 h-24 rounded-3xl bg-[var(--blue)]/10 border border-[var(--blue)]/20 flex items-center justify-center">
+              <BedDouble size={40} className="text-[var(--blue)]" />
+            </div>
+            {/* Glow ring */}
+            <div
+              className="absolute inset-0 rounded-3xl animate-ping opacity-20 bg-[var(--blue)]"
+              style={{ animationDuration: "2.5s" }}
+            />
           </div>
         </div>
 
-        {/* 404 Text */}
+        {/* 404 */}
         <div className="mb-6">
-          <h1 className="text-9xl font-bold bg-gradient-to-r from-[var(--blue)] via-[var(--yellow)] to-[var(--red)] bg-clip-text text-transparent mb-4 animate-pulse">
+          <h1
+            className="font-black uppercase leading-none mb-2"
+            style={{
+              fontSize: "clamp(6rem, 20vw, 10rem)",
+              letterSpacing: "-0.05em",
+              background:
+                "linear-gradient(135deg, var(--blue) 0%, var(--blue) 50%, rgba(245,158,11,0.3) 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+          >
             404
           </h1>
-          <div className="h-1 w-32 bg-gradient-to-r from-[var(--blue)] to-[var(--red)] mx-auto rounded-full"></div>
+          <div className="h-px w-24 mx-auto bg-gradient-to-r from-transparent via-[var(--blue)]/60 to-transparent" />
         </div>
 
-        {/* Message */}
-        <h2 className="text-3xl md:text-4xl font-bold text-[var(--white)] mb-4">
-          Oops! Phim không tìm thấy
+        {/* Text */}
+        <h2 className="text-white font-black text-2xl uppercase tracking-wide mb-3">
+          Trang không tồn tại
         </h2>
-        <p className="text-lg text-[var(--white)]/60 mb-12 max-w-md mx-auto">
-          Có vẻ như trang bạn đang tìm kiếm đã bị xóa hoặc không tồn tại. Hãy
-          thử quay lại trang chủ nhé!
+        <p className="text-white/40 text-sm leading-relaxed mb-10 max-w-sm mx-auto">
+          Trang bạn đang tìm kiếm đã bị xóa hoặc không tồn tại. Vui lòng quay
+          lại trang chủ để tiếp tục.
         </p>
 
         {/* Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button
-            onClick={handleGoBack}
-            className="group px-8 py-4 rounded-xl bg-[var(--white)]/5 text-[var(--white)] hover:bg-[var(--white)]/10 transition-all duration-300 border border-[var(--white)]/10 hover:border-[var(--white)]/30 flex items-center justify-center gap-2 font-semibold"
+            onClick={() => navigate(-1)}
+            className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-white/15 text-white/60 hover:text-white hover:border-white/30 text-sm font-semibold transition-all cursor-pointer"
           >
-            Quay lại
+            <ArrowLeft size={16} /> Quay lại
           </button>
-
           <button
-            onClick={handleGoHome}
-            className="group px-8 py-4 rounded-xl bg-gradient-to-r from-[var(--blue)] to-[var(--blue)]/80 text-[var(--white)] hover:shadow-lg hover:shadow-[var(--blue)]/30 transition-all duration-300 flex items-center justify-center gap-2 font-semibold hover:scale-105 transform"
+            onClick={() => navigate("/")}
+            className="flex items-center justify-center gap-2 px-8 py-3 rounded-xl font-black text-sm uppercase tracking-widest text-[#0a1628] transition-all hover:-translate-y-0.5 cursor-pointer"
+            style={{
+              background: "linear-gradient(135deg, var(--blue), var(--blue))",
+              boxShadow: "0 4px 20px rgba(245,158,11,0.3)",
+            }}
           >
-            Về trang chủ
+            <Home size={16} /> Về trang chủ
           </button>
         </div>
 
-        {/* Decorative film strip */}
-        <div className="mt-16 flex justify-center gap-2 opacity-20">
-          {[...Array(5)].map((_, i) => (
-            <div
-              key={i}
-              className="w-12 h-16 border-2 border-[var(--white)] rounded-sm"
-              style={{
-                animation: `pulse 2s ease-in-out infinite`,
-                animationDelay: `${i * 0.2}s`,
-              }}
-            ></div>
-          ))}
+        {/* Logo nhỏ dưới cùng */}
+        <div className="mt-14 flex items-center justify-center gap-2 opacity-30">
+          <div className="w-6 h-6 rounded-lg bg-[var(--blue)] flex items-center justify-center">
+            <span className="text-[#0a1628] font-black text-xs">V</span>
+          </div>
+          <span className="text-white text-xs font-black uppercase tracking-widest">
+            Victoria Heritage Hotel
+          </span>
         </div>
       </div>
     </div>
