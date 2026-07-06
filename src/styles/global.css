@@ -1,17 +1,127 @@
 :root {
-  --black_bg: #0a1d37;
-  --black: #121520;
+  --black_bg: #f8fafc;
+  --black: #0f172a;
   --white: #ffffff;
-  --blue: #4d4dff;
-  --blue_dark: #070f54;
-  --blue_alice: #f0f8ff;
-  --green: #79c314;
-  --green_dark: #25a385;
-  --pink: #f2dadf;
-  --purple: #b026ff;
-  --yellow: #faeb36;
-  --red: #e81416;
-  --orange: #ffa500;
-  --brown: #964b00;
-  --slate: #516572;
+  --blue: #7c3aed;
+  --blue_dark: #f1f5f9;
+  --blue_alice: #f3e8ff;
+  --green: #10b981;
+  --green_dark: #047857;
+  --pink: #ec4899;
+  --purple: #a855f7;
+  --yellow: #f59e0b;
+  --red: #ef4444;
+  --orange: #f97316;
+  --brown: #7c2d12;
+  --slate: #64748b;
+}
+
+* {
+  scrollbar-width: none;
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  20% {
+    transform: translateX(-6px);
+  }
+
+  40% {
+    transform: translateX(6px);
+  }
+
+  60% {
+    transform: translateX(-4px);
+  }
+
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-shake {
+  animation: shake 0.4s ease;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes toast-slide-in {
+  from {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes toast-slide-out {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+}
+
+.animate-toast-slide-in {
+  animation: toast-slide-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-toast-slide-out {
+  animation: toast-slide-out 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Custom scrollbar for year/month selections */
+.dropdown-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.dropdown-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.dropdown-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(124, 58, 237, 0.2);
+  border-radius: 9999px;
+}
+.dropdown-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 58, 237, 0.4);
+}
+.dropdown-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(124, 58, 237, 0.2) transparent;
 }

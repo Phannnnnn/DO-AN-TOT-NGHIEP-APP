@@ -1,18 +1,15 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/inter";
 
 body {
-  font-family: "Inter", sans-serif;
+  font-family: "DM Sans", sans-serif;
   font-size: 14px;
+  color: var(--black);
   line-height: 1.6;
-  font-weight: 400;
+  font-weight: 500;
   margin: 0;
   padding: 0;
-}
-
-* {
-  scrollbar-width: none;
 }

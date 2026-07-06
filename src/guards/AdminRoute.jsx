@@ -1,32 +1,32 @@
 import { useEffect } from "react";
-import { useAuth, useModalAuth } from "../context/ContextProvider";
-import { toast } from "react-toastify";
+import { useAuth, useModalAuth, useNotification } from "../context/ContextProvider";
 import LoadingComponent from "../components/common/LoadingComponent";
 
 export default function ManagerRoute({ children }) {
-  const { user, isLoading } = useAuth();
-  const { openLogin } = useModalAuth();
+ const { user, isLoading } = useAuth();
+ const { openLogin } = useModalAuth();
+ const toast = useNotification();
 
-  const isAdmin = user?.role === "ADMIN";
+ const isAdmin = user?.role === "ADMIN";
 
-  useEffect(() => {
-    if (isLoading) {
-      return;
-    }
+ useEffect(() => {
+ if (isLoading) {
+ return;
+ }
 
-    if (!user || !isAdmin) {
-      toast.info("Vui lòng đăng nhập bằng tài khoản quản trị viên.");
-      openLogin();
-    }
-  }, [user, isAdmin, openLogin, isLoading]);
+ if (!user || !isAdmin) {
+ toast.info("Thông báo", "Vui lòng đăng nhập bằng tài khoản quản trị viên.");
+ openLogin();
+ }
+ }, [user, isAdmin, openLogin, isLoading]);
 
-  if (isLoading) {
-    return <LoadingComponent />;
-  }
+ if (isLoading) {
+ return <LoadingComponent />;
+ }
 
-  if (!user || !isAdmin) {
-    return null;
-  }
+ if (!user || !isAdmin) {
+ return null;
+ }
 
-  return children;
+ return children;
 }

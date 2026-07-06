@@ -36,4 +36,19 @@ export const bookingService = {
   checkOut: (bookingId) => {
     return apiClient.patch(API_ENDPOINTS.BOOKING.BOOKING_CHECK_OUT(bookingId));
   },
+
+  myBookings: () => {
+    return apiClient.get(API_ENDPOINTS.BOOKING.MY_BOOKINGS);
+  },
+
+  cancelBooking: (bookingId) => {
+    return apiClient.patch(API_ENDPOINTS.BOOKING.CANCEL_BOOKING(bookingId));
+  },
+
+  addService: (bookingDetailId, data) => {
+    return apiClient.post(
+      API_ENDPOINTS.BOOKING_SERVICE.ADD_SERVICE(bookingDetailId),
+      data,
+    );
+  },
 };

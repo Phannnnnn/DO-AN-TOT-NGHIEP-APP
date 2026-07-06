@@ -1,34 +1,22 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
-import { format, parseISO } from "date-fns";
-import { vi } from "date-fns/locale";
 import {
   ArrowLeft,
   Check,
   ChevronRight,
   Loader2,
-  User,
-  Mail,
-  Phone,
-  FileText,
-  BedDouble,
-  Moon,
-  Users,
   Clock,
   AlertTriangle,
-  Copy,
-  CheckCircle,
 } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
-import { toast } from "react-toastify";
-import { bookingService, paymentService, roomHoldService } from "@/services";
+import { useAuth, useNotification } from "@/context/ContextProvider";
+import { bookingService, roomHoldService, userService } from "@/services";
 
-const formatVND = (amount) =>
-  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
-    amount,
-  );
-const fmtDate = (d) =>
-  d ? format(parseISO(d), "dd MMM yyyy", { locale: vi }) : "";
+import StepInfo from "./StepInfo";
+import StepConfirm from "./StepConfirm";
+import StepPayment from "./StepPayment";
+import StepDone from "./StepDone";
+import BookingSummaryCard from "./BookingSummaryCard";
+
 const STEPS = ["Thông tin", "Xác nhận", "Thanh toán", "Hoàn tất"];
 
 /* ── Countdown ── */
@@ -58,313 +46,10 @@ const useCountdown = (expiresAt, onExpired) => {
   return { secondsLeft, display: `${mm}:${ss}` };
 };
 
-/* ── InputField dark ── */
-const InputField = ({ label, icon, error, ...props }) => (
-  <div className="flex flex-col gap-1.5">
-    <label className="text-[10px] font-black uppercase tracking-widest text-white/30">
-      {label}
-    </label>
-    <div
-      className={`flex items-center gap-2.5 h-11 px-3.5 rounded-xl border transition-colors ${
-        error
-          ? "border-red-500/50 bg-white/5"
-          : "border-white/10 bg-white/5 focus-within:border-[var(--blue)]"
-      }`}
-    >
-      <span className="text-[var(--blue)] shrink-0">{icon}</span>
-      <input
-        className="flex-1 text-sm text-white outline-none bg-transparent placeholder:text-white/20"
-        {...props}
-      />
-    </div>
-    {error && <p className="text-[11px] text-red-400">{error}</p>}
-  </div>
-);
-
-/* ── Step 0 ── */
-const StepInfo = ({ form, setForm, errors }) => (
-  <div className="flex flex-col gap-4">
-    <InputField
-      label="Họ và tên *"
-      icon={<User size={15} />}
-      placeholder="Nguyễn Văn A"
-      value={form.guestName}
-      onChange={(e) => setForm((p) => ({ ...p, guestName: e.target.value }))}
-      error={errors.guestName}
-    />
-    <InputField
-      label="Email *"
-      icon={<Mail size={15} />}
-      type="email"
-      placeholder="example@email.com"
-      value={form.guestEmail}
-      onChange={(e) => setForm((p) => ({ ...p, guestEmail: e.target.value }))}
-      error={errors.guestEmail}
-    />
-    <InputField
-      label="Số điện thoại"
-      icon={<Phone size={15} />}
-      placeholder="0901 234 567"
-      value={form.guestPhone}
-      onChange={(e) => setForm((p) => ({ ...p, guestPhone: e.target.value }))}
-    />
-    <div className="flex flex-col gap-1.5">
-      <label className="text-[10px] font-black uppercase tracking-widest text-white/30">
-        Ghi chú
-      </label>
-      <div className="flex items-start gap-2.5 px-3.5 py-2.5 rounded-xl border border-white/10 bg-white/5 focus-within:border-[var(--blue)] transition-colors">
-        <FileText size={15} className="text-[var(--blue)] shrink-0 mt-0.5" />
-        <textarea
-          rows={3}
-          placeholder="Yêu cầu đặc biệt, giờ nhận phòng dự kiến..."
-          value={form.notes}
-          onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
-          className="flex-1 text-sm text-white outline-none bg-transparent resize-none placeholder:text-white/20"
-        />
-      </div>
-    </div>
-  </div>
-);
-
-/* ── Step 1 ── */
-const StepConfirm = ({ form, booking }) => (
-  <div className="flex flex-col gap-4">
-    {/* Khách */}
-    <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-      <p className="text-[10px] font-black uppercase tracking-widest text-white/30 mb-3">
-        Thông tin khách
-      </p>
-      <div className="flex flex-col gap-2 text-sm">
-        {[
-          { label: "Họ tên", val: form.guestName },
-          { label: "Email", val: form.guestEmail },
-          ...(form.guestPhone
-            ? [{ label: "Điện thoại", val: form.guestPhone }]
-            : []),
-          ...(form.notes ? [{ label: "Ghi chú", val: form.notes }] : []),
-        ].map((row) => (
-          <div key={row.label} className="flex justify-between gap-4">
-            <span className="text-white/40 shrink-0">{row.label}</span>
-            <span className="font-semibold text-white text-right">
-              {row.val}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-
-    {/* Phòng */}
-    <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-      <p className="text-[10px] font-black uppercase tracking-widest text-white/30 mb-3">
-        Phòng đặt
-      </p>
-      <div className="flex flex-col gap-3">
-        {booking.rooms.map((r) => (
-          <div
-            key={r.roomId}
-            className="flex items-center justify-between text-sm"
-          >
-            <div>
-              <p className="font-semibold text-white">{r.roomType?.typeName}</p>
-              <p className="text-xs text-white/40">
-                Tầng {r.floor} · Phòng {r.roomNumber}
-              </p>
-            </div>
-            <div className="flex gap-1.5 flex-wrap justify-end">
-              {(r.roomBeds ?? []).map((b, i) => (
-                <span
-                  key={i}
-                  className="text-[10px] text-white/60 bg-white/10 border border-white/10 px-2 py-0.5 rounded-full flex items-center gap-1"
-                >
-                  <BedDouble size={10} className="text-[var(--blue)]" />{" "}
-                  {b.quantity}× {b.roomBedType}
-                </span>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-
-    {/* Lưu trú */}
-    <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-      <p className="text-[10px] font-black uppercase tracking-widest text-white/30 mb-3">
-        Thông tin lưu trú
-      </p>
-      <div className="flex flex-col gap-2 text-sm">
-        {[
-          {
-            icon: <Moon size={13} />,
-            label: "Nhận phòng",
-            val: fmtDate(booking.checkInDate),
-          },
-          {
-            icon: <Moon size={13} />,
-            label: "Trả phòng",
-            val: fmtDate(booking.checkOutDate),
-          },
-          {
-            icon: <Users size={13} />,
-            label: "Khách",
-            val: `${booking.adults} người lớn${Number(booking.children) > 0 ? `, ${booking.children} trẻ em` : ""}`,
-          },
-        ].map((row) => (
-          <div key={row.label} className="flex justify-between">
-            <span className="text-white/40 flex items-center gap-1.5">
-              <span className="text-[var(--blue)]">{row.icon}</span>
-              {row.label}
-            </span>
-            <span className="font-semibold text-white">{row.val}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-
-    <div className="bg-[var(--blue)]/10 border border-[var(--blue)]/20 rounded-xl p-4 text-sm text-[var(--blue)] flex items-center gap-2">
-      <Check size={14} className="shrink-0" /> Hủy miễn phí trước 24 giờ · Thanh
-      toán tại khách sạn
-    </div>
-  </div>
-);
-
-/* ── Step 2: QR ── */
-const StepPayment = ({ bookingResult, onPaid }) => {
-  const [paymentUrl, setPaymentUrl] = useState(null);
-  const [loadingQR, setLoadingQR] = useState(true);
-  const [copied, setCopied] = useState(false);
-  const [paid, setPaid] = useState(false);
-  const intervalRef = useRef(null);
-
-  useEffect(() => {
-    const create = async () => {
-      try {
-        const res = await paymentService.createPayment(bookingResult.bookingId);
-        if (res.success) setPaymentUrl(res.data?.paymentUrl ?? res.data);
-      } catch {
-        toast.error("Không thể tạo link thanh toán.");
-      } finally {
-        setLoadingQR(false);
-      }
-    };
-    if (bookingResult?.bookingId) create();
-  }, [bookingResult?.bookingId]);
-
-  useEffect(() => {
-    if (!bookingResult?.bookingId || paid) return;
-    intervalRef.current = setInterval(async () => {
-      try {
-        const res = await bookingService.bookingById(bookingResult.bookingId);
-        if (res.data?.paymentStatus === "paid") {
-          clearInterval(intervalRef.current);
-          setPaid(true);
-          onPaid?.();
-        }
-      } catch {}
-    }, 3000);
-    return () => clearInterval(intervalRef.current);
-  }, [bookingResult?.bookingId, paid]);
-
-  if (paid)
-    return (
-      <div className="text-center py-6 flex flex-col items-center gap-3">
-        <div className="w-14 h-14 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center">
-          <Check size={28} className="text-green-400" />
-        </div>
-        <h3 className="text-lg font-black text-white uppercase">
-          Thanh toán thành công!
-        </h3>
-        <p className="text-sm text-white/40">
-          Mã đặt phòng:{" "}
-          <span className="font-black text-white">
-            #{bookingResult?.bookingId}
-          </span>
-        </p>
-      </div>
-    );
-
-  return (
-    <div className="flex flex-col items-center gap-4">
-      <p className="text-sm text-white/50 text-center">
-        Quét mã QR để thanh toán qua VNPAY
-      </p>
-      {loadingQR ? (
-        <div className="w-52 h-52 flex items-center justify-center">
-          <Loader2 size={28} className="animate-spin text-[var(--blue)]" />
-        </div>
-      ) : paymentUrl ? (
-        <div className="p-4 bg-white rounded-2xl shadow-2xl">
-          <QRCodeSVG value={paymentUrl} size={200} />
-        </div>
-      ) : (
-        <div className="w-52 h-52 flex items-center justify-center bg-white/5 rounded-2xl text-sm text-white/30">
-          Không tạo được QR
-        </div>
-      )}
-      {paymentUrl && (
-        <button
-          onClick={() => {
-            navigator.clipboard.writeText(paymentUrl);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-          }}
-          className="flex items-center gap-2 text-xs font-semibold text-white/40 border border-white/15 hover:border-white/30 px-4 py-2 rounded-xl transition cursor-pointer"
-        >
-          {copied ? (
-            <>
-              <CheckCircle size={13} className="text-green-400" /> Đã sao chép
-            </>
-          ) : (
-            <>
-              <Copy size={13} /> Sao chép link
-            </>
-          )}
-        </button>
-      )}
-      <div className="flex items-center gap-2 text-xs text-white/30">
-        <Loader2 size={12} className="animate-spin" /> Đang chờ xác nhận thanh
-        toán...
-      </div>
-    </div>
-  );
-};
-
-/* ── Step 3: Done ── */
-const StepDone = ({ bookingResult }) => (
-  <div className="text-center py-8 flex flex-col items-center gap-4">
-    <div className="w-16 h-16 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center">
-      <Check size={32} className="text-green-400" />
-    </div>
-    <div>
-      <h3 className="text-xl font-black text-white uppercase">
-        Đặt phòng thành công!
-      </h3>
-      <p className="text-sm text-white/40 mt-1">
-        Mã đặt phòng:{" "}
-        <span className="font-black text-white">
-          #{bookingResult?.bookingId}
-        </span>
-      </p>
-    </div>
-    <p className="text-sm text-white/40 max-w-xs text-center">
-      Xác nhận đã được gửi đến email. Vui lòng kiểm tra hộp thư.
-    </p>
-    <div className="bg-white/5 border border-white/10 rounded-xl p-4 w-full text-sm">
-      <div className="flex justify-between mb-2">
-        <span className="text-white/40">Tổng thanh toán</span>
-        <span className="font-black text-white">
-          {formatVND(bookingResult?.totalAmount ?? 0)}
-        </span>
-      </div>
-      <div className="flex justify-between">
-        <span className="text-white/40">Phương thức</span>
-        <span className="font-semibold text-white">VNPAY</span>
-      </div>
-    </div>
-  </div>
-);
-
 /* ── Main ── */
 const BookingPage = () => {
+  const toast = useNotification();
+  const { user } = useAuth();
   const { state } = useLocation();
   const navigate = useNavigate();
   const {
@@ -386,7 +71,31 @@ const BookingPage = () => {
     guestPhone: "",
     notes: "",
   });
+  const [userProfile, setUserProfile] = useState(null);
   const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      if (user?.id) {
+        try {
+          const res = await userService.getUserById(user.id);
+          if (res.success && res.data) {
+            setUserProfile(res.data);
+            const customer = res.data.customer || {};
+            setForm({
+              guestName: customer.fullName || "",
+              guestEmail: customer.email || "",
+              guestPhone: customer.phone || "",
+              notes: "",
+            });
+          }
+        } catch (error) {
+          console.error("Lỗi khi tải thông tin tài khoản để tự điền:", error);
+        }
+      }
+    };
+    loadUserProfile();
+  }, [user]);
   const [submitting, setSubmitting] = useState(false);
   const [bookingResult, setBookingResult] = useState(null);
   const [expired, setExpired] = useState(false);
@@ -403,48 +112,36 @@ const BookingPage = () => {
 
   const handleExpired = async () => {
     setExpired(true);
-    if (sessionId) {
-      try {
-        await roomHoldService.release(sessionId);
-      } catch {}
-    }
+    try {
+      await roomHoldService.release(sessionId);
+    } catch {}
   };
+
   const { secondsLeft, display: countdownDisplay } = useCountdown(
     expiresAt,
     handleExpired,
   );
-  useEffect(() => {
-    return () => {
-      if (sessionId && !bookingResult)
-        roomHoldService.release(sessionId).catch(() => {});
-    };
-  }, [sessionId, bookingResult]);
-
-  const validate = () => {
-    const e = {};
-    if (!form.guestName.trim()) e.guestName = "Vui lòng nhập họ tên";
-    if (!form.guestEmail.trim()) e.guestEmail = "Vui lòng nhập email";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.guestEmail))
-      e.guestEmail = "Email không hợp lệ";
-    return e;
-  };
 
   const handleNext = () => {
-    if (step === 0) {
-      const e = validate();
-      if (Object.keys(e).length) {
-        setErrors(e);
-        return;
-      }
-      setErrors({});
+    const errs = {};
+    if (!form.guestName.trim()) errs.guestName = "Vui lòng nhập họ tên.";
+    if (!form.guestEmail.trim()) errs.guestEmail = "Vui lòng nhập email.";
+    else if (!/\S+@\S+\.\S+/.test(form.guestEmail))
+      errs.guestEmail = "Email không hợp lệ.";
+
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      return;
     }
-    setStep((s) => s + 1);
+    setErrors({});
+    setStep(1);
   };
 
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
       const res = await bookingService.create({
+        customerId: userProfile?.customer?.customerId || undefined,
         guestName: form.guestName.trim(),
         guestEmail: form.guestEmail.trim(),
         guestPhone: form.guestPhone.trim() || undefined,
@@ -460,6 +157,7 @@ const BookingPage = () => {
       }
     } catch (e) {
       toast.error(
+        "Lỗi đặt phòng",
         e?.response?.data?.message ?? "Đặt phòng thất bại. Vui lòng thử lại.",
       );
     } finally {
@@ -467,24 +165,23 @@ const BookingPage = () => {
     }
   };
 
-  /* Expired */
   if (expired)
     return (
-      <div className="min-h-screen bg-[#0a1628] flex items-center justify-center px-4">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 text-slate-800">
         <div className="text-center max-w-sm">
           <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto mb-4">
-            <AlertTriangle size={28} className="text-amber-400" />
+            <AlertTriangle size={28} className="text-amber-500" />
           </div>
-          <h2 className="text-xl font-black text-white uppercase mb-2">
+          <h2 className="text-xl font-bold text-slate-800 mb-2">
             Phiên đặt phòng hết hạn
           </h2>
-          <p className="text-sm text-white/40 mb-6">
+          <p className="text-sm text-slate-500 mb-6">
             Thời gian giữ phòng 15 phút đã kết thúc. Vui lòng tìm kiếm lại
             phòng.
           </p>
           <button
             onClick={() => navigate(-2)}
-            className="text-sm font-black text-white bg-[var(--blue)] hover:opacity-90 px-8 py-3 rounded-xl transition cursor-pointer uppercase tracking-wide"
+            className="text-sm font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 px-8 py-3 rounded-xl transition cursor-pointer shadow-md shadow-purple-600/10"
           >
             Tìm lại phòng
           </button>
@@ -494,14 +191,14 @@ const BookingPage = () => {
 
   if (!state)
     return (
-      <div className="min-h-screen bg-[#0a1628] flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-800">
         <div className="text-center">
-          <p className="text-white/40 mb-4">
+          <p className="text-slate-500 mb-4">
             Không tìm thấy thông tin đặt phòng.
           </p>
           <button
             onClick={() => navigate("/")}
-            className="text-sm font-black text-white bg-[var(--blue)] px-6 py-3 rounded-xl cursor-pointer uppercase"
+            className="text-sm font-bold text-white bg-[var(--blue)] hover:bg-purple-700 px-6 py-3 rounded-xl cursor-pointer transition"
           >
             Về trang chủ
           </button>
@@ -510,29 +207,29 @@ const BookingPage = () => {
     );
 
   return (
-    <div className="min-h-screen bg-[#0a1628]">
+    <div className="min-h-screen bg-slate-50 text-slate-800">
       {/* Top bar */}
-      <div className="sticky top-0 z-20 bg-[#0a1628]/95 backdrop-blur-md border-b border-white/10">
+      <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-100 shadow-sm">
         <div className="max-w-5xl mx-auto px-6 py-3 flex items-center gap-4">
           <button
             onClick={() =>
               step > 0 && !bookingResult ? setStep((s) => s - 1) : navigate(-1)
             }
-            className="flex items-center gap-1.5 text-white/50 hover:text-white transition text-sm font-semibold cursor-pointer shrink-0"
+            className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 transition text-sm font-semibold cursor-pointer shrink-0"
           >
             <ArrowLeft size={15} />{" "}
             {step > 0 && !bookingResult ? "Quay lại" : "Chi tiết phòng"}
           </button>
-          <div className="h-4 w-px bg-white/15" />
+          <div className="h-4 w-px bg-slate-200" />
           <span className="text-[var(--blue)] text-sm font-semibold flex-1">
             Đặt phòng
           </span>
           {!bookingResult && (
             <div
-              className={`flex items-center gap-1.5 text-sm font-black px-3 py-1 rounded-full ${
+              className={`flex items-center gap-1.5 text-sm font-bold px-3 py-1 rounded-full ${
                 secondsLeft <= 120
-                  ? "bg-red-500/20 text-red-400"
-                  : "bg-white/10 text-[var(--blue)]"
+                  ? "bg-red-50 text-red-500 border border-red-100 animate-pulse"
+                  : "bg-purple-50 text-[var(--blue)] border border-purple-100"
               }`}
             >
               <Clock size={13} /> {countdownDisplay}
@@ -553,25 +250,25 @@ const BookingPage = () => {
               >
                 <div className="flex items-center gap-2">
                   <div
-                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black transition-all ${
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                       i < step
                         ? "bg-green-500 text-white"
                         : i === step
                           ? "bg-[var(--blue)] text-white"
-                          : "bg-white/10 text-white/30"
+                          : "bg-slate-200 text-slate-400"
                     }`}
                   >
                     {i < step ? <Check size={13} /> : i + 1}
                   </div>
                   <span
-                    className={`text-xs font-black uppercase tracking-wider ${i === step ? "text-white" : "text-white/30"}`}
+                    className={`text-xs font-bold ${i === step ? "text-slate-800 font-bold" : "text-slate-400"}`}
                   >
                     {label}
                   </span>
                 </div>
                 {i < STEPS.length - 1 && (
                   <div
-                    className={`flex-1 h-px ${i < step ? "bg-green-500" : "bg-white/10"}`}
+                    className={`flex-1 h-px ${i < step ? "bg-green-500" : "bg-slate-200"}`}
                   />
                 )}
               </div>
@@ -579,8 +276,8 @@ const BookingPage = () => {
           </div>
 
           {/* Content */}
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm">
-            <h2 className="text-xl font-black text-white uppercase mb-5">
+          <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-lg">
+            <h2 className="text-xl font-bold text-slate-800 mb-5">
               {STEPS[step]}
             </h2>
             {step === 0 && (
@@ -602,7 +299,7 @@ const BookingPage = () => {
               {step > 0 && (
                 <button
                   onClick={() => setStep((s) => s - 1)}
-                  className="flex-1 h-12 rounded-xl border border-white/15 font-semibold text-sm text-white/60 hover:border-white/30 hover:text-white transition cursor-pointer"
+                  className="flex-1 h-12 rounded-xl border border-slate-200 font-semibold text-sm text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition cursor-pointer"
                 >
                   Quay lại
                 </button>
@@ -610,7 +307,7 @@ const BookingPage = () => {
               {step === 0 && (
                 <button
                   onClick={handleNext}
-                  className="flex-[2] h-12 rounded-xl bg-[var(--blue)] hover:opacity-90 text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition cursor-pointer"
+                  className="flex-[2] h-12 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-sm flex items-center justify-center gap-2 transition cursor-pointer shadow-md shadow-purple-600/10"
                 >
                   Tiếp theo <ChevronRight size={15} />
                 </button>
@@ -619,7 +316,7 @@ const BookingPage = () => {
                 <button
                   onClick={handleSubmit}
                   disabled={submitting}
-                  className="flex-[2] h-12 rounded-xl bg-[var(--blue)] hover:opacity-90 disabled:opacity-50 text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition cursor-pointer"
+                  className="flex-[2] h-12 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center gap-2 transition cursor-pointer shadow-md shadow-purple-600/10"
                 >
                   {submitting ? (
                     <>
@@ -638,7 +335,7 @@ const BookingPage = () => {
           {step === 3 && bookingResult && (
             <button
               onClick={() => navigate("/")}
-              className="w-full h-12 rounded-xl bg-[var(--blue)] hover:opacity-90 text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition cursor-pointer"
+              className="w-full h-12 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-sm flex items-center justify-center gap-2 transition cursor-pointer shadow-md shadow-purple-600/10"
             >
               Về trang chủ
             </button>
@@ -646,77 +343,16 @@ const BookingPage = () => {
         </div>
 
         {/* Right: summary */}
-        <div className="lg:col-span-1">
-          <div className="sticky top-20 bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col gap-4 backdrop-blur-sm">
-            {/* Countdown */}
-            {!bookingResult && (
-              <div
-                className={`flex items-center justify-between p-3 rounded-xl ${
-                  secondsLeft <= 120
-                    ? "bg-red-500/10 border border-red-500/20"
-                    : "bg-[var(--blue)]/10 border border-[var(--blue)]/20"
-                }`}
-              >
-                <span
-                  className={`text-xs font-black ${secondsLeft <= 120 ? "text-red-400" : "text-[var(--blue)]"}`}
-                >
-                  {secondsLeft <= 120
-                    ? "⚠ Sắp hết hạn!"
-                    : "Thời gian giữ phòng"}
-                </span>
-                <span
-                  className={`font-black text-base ${secondsLeft <= 120 ? "text-red-400" : "text-[var(--blue)]"}`}
-                >
-                  {countdownDisplay}
-                </span>
-              </div>
-            )}
-
-            <p className="text-[10px] font-black uppercase tracking-widest text-white/30">
-              Chi tiết đặt phòng
-            </p>
-
-            <div className="flex flex-col gap-1.5 text-sm">
-              {[
-                { label: "Nhận phòng", val: fmtDate(checkInDate) },
-                { label: "Trả phòng", val: fmtDate(checkOutDate) },
-                { label: "Số đêm", val: nights },
-              ].map((row) => (
-                <div key={row.label} className="flex justify-between">
-                  <span className="text-white/40">{row.label}</span>
-                  <span className="font-semibold text-white text-right">
-                    {row.val}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <div className="border-t border-white/10 pt-3 flex flex-col gap-1.5">
-              {(rooms ?? []).map((r) => (
-                <div key={r.roomId} className="flex justify-between text-sm">
-                  <span className="text-white/40">{r.roomType?.typeName}</span>
-                  <span className="font-semibold text-white">
-                    {formatVND(
-                      parseFloat(r.pricePlan?.basePrice ?? 0) * nights,
-                    )}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <div className="border-t border-white/10 pt-3">
-              <div className="flex justify-between">
-                <span className="font-black text-white">Tổng cộng</span>
-                <span className="font-black text-lg text-white">
-                  {formatVND(totalPrice)}
-                </span>
-              </div>
-              <p className="text-[11px] text-white/25 mt-0.5">
-                Đã bao gồm thuế & phí
-              </p>
-            </div>
-          </div>
-        </div>
+        <BookingSummaryCard
+          bookingResult={bookingResult}
+          secondsLeft={secondsLeft}
+          countdownDisplay={countdownDisplay}
+          checkInDate={checkInDate}
+          checkOutDate={checkOutDate}
+          nights={nights}
+          rooms={rooms}
+          totalPrice={totalPrice}
+        />
       </div>
     </div>
   );

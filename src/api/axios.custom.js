@@ -31,7 +31,18 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // 1. Kiểm tra xem request bị lỗi có phải là request Đăng nhập hoặc Refresh Token không
+    // Bạn có thể dùng API_ENDPOINTS.AUTH.LOGIN hoặc check chuỗi URL tùy thuộc vào cấu trúc dự án của bạn
+    const isAuthRequest =
+      originalRequest.url?.includes("login") ||
+      originalRequest.url?.includes("refresh");
+
+    // 2. Chỉ tự động refresh token nếu ĐÓ KHÔNG PHẢI là request login/refresh
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !isAuthRequest
+    ) {
       originalRequest._retry = true;
 
       try {
@@ -52,10 +63,12 @@ apiClient.interceptors.response.use(
         console.log(refreshError);
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
-        window.location.href = "/login";
+        window.location.href = "/auth/login";
+        return Promise.reject(refreshError);
       }
     }
 
+    // Nếu là lỗi từ request Login, nó sẽ lọt xuống đây và trả về cho file LoginPage xử lý toast.error
     return Promise.reject(error.response?.data || error);
   },
 );

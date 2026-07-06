@@ -1,35 +1,24 @@
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
-import { format, parseISO, differenceInDays } from "date-fns";
-import { vi } from "date-fns/locale";
+import { useState, useEffect, useMemo } from "react";
 import {
   Search,
   Users,
   Moon,
   BedDouble,
-  ChevronRight,
   ArrowLeft,
-  Star,
-  Check,
   SlidersHorizontal,
+  X,
+  Tag,
+  Sparkles,
+  DoorOpen,
 } from "lucide-react";
 import { bookingService } from "@/services/booking/bookingService";
 
-const formatVND = (amount) =>
-  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
-    amount,
-  );
-
-const ROOM_IMAGES = [
-  "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?q=80&w=800",
-  "https://images.unsplash.com/photo-1590490360182-c33d57733427?q=80&w=800",
-  "https://images.unsplash.com/photo-1566665797739-1674de7a421a?q=80&w=800",
-  "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?q=80&w=800",
-  "https://images.unsplash.com/photo-1618773928121-c32242e63f39?q=80&w=800",
-  "https://images.unsplash.com/photo-1564078516393-cf04bd966897?q=80&w=800",
-  "https://images.unsplash.com/photo-1611892440504-42a792e24d32?q=80&w=800",
-  "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?q=80&w=800",
-];
+import FilterPanel from "./components/FilterPanel";
+import CombinationCard from "./components/CombinationCard";
+import RoomCard from "./components/RoomCard";
+import SelectionBar from "./components/SelectionBar";
+import { formatDate } from "./utils";
 
 const SearchResultPage = () => {
   const [searchParams] = useSearchParams();
@@ -41,18 +30,28 @@ const SearchResultPage = () => {
   const children = searchParams.get("children") ?? "0";
 
   const [combinations, setCombinations] = useState([]);
+  const [availableRooms, setAvailableRooms] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const nights =
-    checkInDate && checkOutDate
-      ? Math.max(
-          1,
-          differenceInDays(parseISO(checkOutDate), parseISO(checkInDate)),
-        )
-      : 1;
-  const fmtDate = (d) =>
-    d ? format(parseISO(d), "dd MMM", { locale: vi }) : "";
+  // Filter state
+  const [selectedTypes, setSelectedTypes] = useState([]);
+  const [selectedFloors, setSelectedFloors] = useState([]);
+  const [filterMin, setFilterMin] = useState("");
+  const [filterMax, setFilterMax] = useState("");
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
+  // Multi-select state
+  const [selectedRoomIds, setSelectedRoomIds] = useState(new Set());
+
+  const nights = (() => {
+    if (!checkInDate || !checkOutDate) return 0;
+    return Math.max(
+      1,
+      Math.round((new Date(checkOutDate) - new Date(checkInDate)) / 86400000),
+    );
+  })();
+
+  /* ── Fetch ── */
   useEffect(() => {
     const fetchRooms = async () => {
       setLoading(true);
@@ -63,11 +62,16 @@ const SearchResultPage = () => {
           adults: Number(adults),
           children: Number(children),
         });
-        setCombinations(
-          res.success && res.data?.combinations ? res.data.combinations : [],
-        );
+        if (res.success && res.data) {
+          setCombinations(res.data.combinations ?? []);
+          setAvailableRooms(res.data.availableRooms ?? []);
+        } else {
+          setCombinations([]);
+          setAvailableRooms([]);
+        }
       } catch {
         setCombinations([]);
+        setAvailableRooms([]);
       } finally {
         setLoading(false);
       }
@@ -76,208 +80,431 @@ const SearchResultPage = () => {
     else setLoading(false);
   }, [checkInDate, checkOutDate, adults, children]);
 
+  /* ── Filter options ── */
+  const roomTypeOptions = useMemo(() => {
+    const types = new Set(availableRooms.map((r) => r.roomType.typeName));
+    return [...types].sort();
+  }, [availableRooms]);
+
+  const floorOptions = useMemo(() => {
+    const floors = new Set(availableRooms.map((r) => r.floor));
+    return [...floors].sort((a, b) => a - b);
+  }, [availableRooms]);
+
+  const { minPrice, maxPrice } = useMemo(() => {
+    if (!availableRooms.length) return { minPrice: 0, maxPrice: 0 };
+    const prices = availableRooms.map((r) => r.roomType.activePrice ?? 0);
+    return { minPrice: Math.min(...prices), maxPrice: Math.max(...prices) };
+  }, [availableRooms]);
+
+  /* ── Filter logic ── */
+  const matchesFilters = (pricePerNight, roomTypeNames, floors) => {
+    const min = filterMin !== "" ? Number(filterMin) : null;
+    const max = filterMax !== "" ? Number(filterMax) : null;
+    if (min !== null && pricePerNight < min) return false;
+    if (max !== null && pricePerNight > max) return false;
+    if (selectedTypes.length > 0) {
+      const hasType = roomTypeNames.some((t) => selectedTypes.includes(t));
+      if (!hasType) return false;
+    }
+    if (selectedFloors.length > 0) {
+      const hasFloor = floors.some((f) => selectedFloors.includes(f));
+      if (!hasFloor) return false;
+    }
+    return true;
+  };
+
+  const filteredCombinations = useMemo(
+    () =>
+      combinations.filter((combo) => {
+        const pricePerNight = combo.rooms.reduce(
+          (s, r) => s + (r.roomType.activePrice ?? 0),
+          0,
+        );
+        return matchesFilters(
+          pricePerNight,
+          combo.rooms.map((r) => r.roomType.typeName),
+          combo.rooms.map((r) => r.floor),
+        );
+      }),
+    [combinations, selectedTypes, selectedFloors, filterMin, filterMax],
+  );
+
+  const filteredRooms = useMemo(
+    () =>
+      availableRooms.filter((room) =>
+        matchesFilters(
+          room.roomType.activePrice ?? 0,
+          [room.roomType.typeName],
+          [room.floor],
+        ),
+      ),
+    [availableRooms, selectedTypes, selectedFloors, filterMin, filterMax],
+  );
+
+  const totalFiltered = filteredCombinations.length + filteredRooms.length;
+  const totalAll = combinations.length + availableRooms.length;
+  const hasActiveFilter =
+    selectedTypes.length > 0 ||
+    selectedFloors.length > 0 ||
+    filterMin !== "" ||
+    filterMax !== "";
+
+  const clearFilters = () => {
+    setSelectedTypes([]);
+    setSelectedFloors([]);
+    setFilterMin("");
+    setFilterMax("");
+  };
+
+  const toggleType = (type) =>
+    setSelectedTypes((prev) =>
+      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
+    );
+
+  const toggleFloor = (floor) =>
+    setSelectedFloors((prev) =>
+      prev.includes(floor) ? prev.filter((f) => f !== floor) : [...prev, floor],
+    );
+
+  /* ── Multi-select handlers ── */
+  const toggleRoomSelect = (roomId) => {
+    setSelectedRoomIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(roomId)) next.delete(roomId);
+      else next.add(roomId);
+      return next;
+    });
+  };
+
+  const removeSelectedRoom = (roomId) => {
+    if (roomId === "all") {
+      setSelectedRoomIds(new Set());
+    } else {
+      setSelectedRoomIds((prev) => {
+        const next = new Set(prev);
+        next.delete(roomId);
+        return next;
+      });
+    }
+  };
+
+  const selectedRoomObjects = availableRooms.filter((r) =>
+    selectedRoomIds.has(r.roomId),
+  );
+
+  /* ── Navigate ── */
+  const goToDetail = (combo) =>
+    navigate("/rooms/detail", {
+      state: { combo, checkInDate, checkOutDate, adults, children },
+    });
+
+  const goToDetailSingleRoom = (room) =>
+    goToDetail({
+      rooms: [room],
+      totalCapacity: room.roomType.maxOccupancy,
+    });
+
+  const goToDetailMultiSelect = () => {
+    if (!selectedRoomObjects.length) return;
+    const combo = {
+      rooms: selectedRoomObjects,
+      totalCapacity: selectedRoomObjects.reduce(
+        (s, r) => s + (r.roomType.maxOccupancy ?? 0),
+        0,
+      ),
+    };
+    goToDetail(combo);
+  };
+
+  /* ── Filter panel props ── */
+  const filterProps = {
+    roomTypeOptions,
+    selectedTypes,
+    onToggleType: toggleType,
+    floorOptions,
+    selectedFloors,
+    onToggleFloor: toggleFloor,
+    minPrice,
+    maxPrice,
+    filterMin,
+    filterMax,
+    onFilterMinChange: setFilterMin,
+    onFilterMaxChange: setFilterMax,
+    onClear: clearFilters,
+    totalFiltered,
+    totalAll,
+  };
+
+  // Thêm padding bottom khi đang có phòng được chọn
+  const hasSelection = selectedRoomIds.size > 0;
+
   return (
-    <div className="min-h-screen bg-[#0a1628]">
+    <div
+      className={`min-h-screen bg-slate-50 text-slate-800 ${hasSelection ? "pb-44" : ""}`}
+    >
       {/* ── Top bar ── */}
-      <div className="sticky top-0 z-20 bg-[#0a1628]/95 backdrop-blur-md border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center gap-4">
-          <button
-            onClick={() => navigate("/")}
-            className="flex items-center gap-1.5 text-white/50 hover:text-white transition text-sm font-semibold cursor-pointer shrink-0"
-          >
-            <ArrowLeft size={15} /> Trang chủ
-          </button>
-          <div className="h-4 w-px bg-white/15" />
-          <div className="flex items-center gap-3 text-sm flex-1">
-            <span className="text-[var(--blue)] font-semibold flex items-center gap-1.5">
-              <Moon size={13} /> {fmtDate(checkInDate)} →{" "}
-              {fmtDate(checkOutDate)}
-              <span className="text-white/30 font-normal text-xs">
-                ({nights} đêm)
+      <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-100 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 md:gap-4 flex-wrap">
+            <button
+              onClick={() => navigate("/")}
+              className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 transition text-sm font-semibold cursor-pointer shrink-0"
+            >
+              <ArrowLeft size={15} />
+              <span className="hidden sm:inline">Trang chủ</span>
+            </button>
+            <div className="h-4 w-px bg-slate-200" />
+            <div className="flex flex-wrap items-center gap-2 text-xs md:text-sm">
+              <span className="text-[var(--blue)] font-semibold flex items-center gap-1">
+                <Moon size={13} /> {formatDate(checkInDate)} →{" "}
+                {formatDate(checkOutDate)}
+                <span className="text-slate-400 font-normal text-xs ml-1">
+                  ({nights} đêm)
+                </span>
               </span>
-            </span>
-            <div className="h-3 w-px bg-white/15" />
-            <span className="text-white/50 text-xs flex items-center gap-1.5">
-              <Users size={12} /> {adults} người lớn
-              {Number(children) > 0 ? `, ${children} trẻ em` : ""}
-            </span>
+              <div className="h-3 w-px bg-slate-200 hidden sm:block" />
+              <span className="text-slate-500 flex items-center gap-1">
+                <Users size={12} /> {adults} người lớn
+                {Number(children) > 0 ? `, ${children} trẻ em` : ""}
+              </span>
+            </div>
           </div>
           <button
             onClick={() => navigate("/")}
-            className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-[var(--blue)] border border-[var(--blue)]/40 hover:border-[var(--blue)] px-3 py-1.5 rounded-lg transition cursor-pointer shrink-0"
+            className="flex items-center gap-1.5 text-xs font-bold text-[var(--blue)] border border-purple-200 hover:border-[var(--blue)] hover:bg-purple-50 px-3 py-1.5 rounded-lg transition cursor-pointer shrink-0"
           >
             <Search size={12} /> Tìm lại
           </button>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-10">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-10">
         {/* ── Header ── */}
-        <div className="flex items-end justify-between mb-8">
+        <div className="flex flex-col md:flex-row md:items-end justify-between items-start gap-4 mb-8">
           <div>
-            <p className="text-[var(--blue)] text-xs font-black uppercase tracking-[0.3em] mb-2">
+            <p className="text-[var(--blue)] text-xs font-bold mb-2">
               Kết quả tìm kiếm
             </p>
-            <h1 className="text-4xl font-black text-white uppercase leading-tight">
-              {loading ? "Đang tìm kiếm..." : `${combinations.length} lựa chọn`}
+            <h1 className="text-4xl font-bold text-slate-800 leading-tight">
+              {loading ? "Đang tìm kiếm..." : `${totalFiltered} lựa chọn`}
               <br />
               <span className="text-[var(--blue)]">phù hợp cho bạn</span>
             </h1>
-            <p className="text-white/40 text-sm mt-2">
+            <p className="text-slate-500 text-sm mt-2">
               {adults} người lớn
               {Number(children) > 0 ? `, ${children} trẻ em` : ""} · {nights}{" "}
               đêm
             </p>
           </div>
-          <button className="flex items-center gap-2 text-sm font-semibold text-white/60 border border-white/15 hover:border-white/40 px-4 py-2.5 rounded-xl transition cursor-pointer">
-            <SlidersHorizontal size={15} /> Lọc
+
+          {/* Nút lọc mobile */}
+          <button
+            onClick={() => setDrawerOpen(true)}
+            className="lg:hidden flex items-center gap-2 text-sm font-semibold text-slate-600 border border-slate-200 hover:bg-slate-100 px-4 py-2.5 rounded-xl transition cursor-pointer"
+          >
+            <SlidersHorizontal size={15} />
+            Lọc
+            {hasActiveFilter && (
+              <span className="w-5 h-5 rounded-full bg-[var(--blue)] text-white text-xs font-bold flex items-center justify-center">
+                {selectedTypes.length +
+                  selectedFloors.length +
+                  (filterMin ? 1 : 0) +
+                  (filterMax ? 1 : 0)}
+              </span>
+            )}
           </button>
         </div>
 
-        {/* ── Loading ── */}
-        {loading && (
-          <div className="flex flex-col items-center justify-center py-32 gap-4">
-            <div className="w-10 h-10 border-2 border-[var(--blue)] border-t-transparent rounded-full animate-spin" />
-            <p className="text-white/40 text-sm">Đang tìm phòng phù hợp...</p>
-          </div>
-        )}
-
-        {/* ── Empty ── */}
-        {!loading && combinations.length === 0 && (
-          <div className="text-center py-32 border border-dashed border-white/10 rounded-3xl">
-            <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-4">
-              <BedDouble size={28} className="text-white/30" />
+        {/* ── Layout: Sidebar + Content ── */}
+        <div className="flex gap-8 items-start">
+          {/* Sidebar lọc – desktop */}
+          {!loading && totalAll > 0 && (
+            <div className="hidden lg:block w-64 shrink-0">
+              <div className="sticky top-24 bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
+                <FilterPanel {...filterProps} />
+              </div>
             </div>
-            <h3 className="text-xl font-black text-white uppercase mb-2">
-              Không tìm thấy phòng trống
-            </h3>
-            <p className="text-white/40 text-sm mb-6">
-              Vui lòng thử ngày khác hoặc điều chỉnh số lượng khách.
-            </p>
-            <button
-              onClick={() => navigate("/")}
-              className="text-sm font-black uppercase tracking-wider text-[#0a1628] bg-[var(--blue)] hover:opacity-90 px-6 py-3 rounded-xl transition cursor-pointer"
-            >
-              Tìm lại
-            </button>
-          </div>
-        )}
+          )}
 
-        {/* ── Results: grid 2 cột ── */}
-        {!loading && combinations.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {combinations.map((combo, idx) => {
-              const isMulti = combo.rooms.length > 1;
-              const pricePerNight = combo.rooms.reduce(
-                (sum, r) => sum + (r.roomType.activePrice ?? 0),
-                0,
-              );
-              const totalPrice = pricePerNight * nights;
-              const allBeds = combo.rooms.flatMap(
-                (r) => r.roomType.roomBeds ?? [],
-              );
-              const img = ROOM_IMAGES[idx % ROOM_IMAGES.length];
-              const roomName = combo.rooms
-                .map((r) => r.roomType.typeName)
-                .join(" + ");
+          {/* Main content */}
+          <div className="flex-1 min-w-0 flex flex-col gap-10">
+            {/* Loading */}
+            {loading && (
+              <div className="flex flex-col items-center justify-center py-32 gap-4">
+                <div className="w-10 h-10 border-2 border-[var(--blue)] border-t-transparent rounded-full animate-spin" />
+                <p className="text-slate-500 text-sm">
+                  Đang tìm phòng phù hợp...
+                </p>
+              </div>
+            )}
 
-              return (
-                <div
-                  key={idx}
-                  className="group relative rounded-3xl overflow-hidden cursor-pointer h-80 shadow-2xl"
-                  onClick={() =>
-                    navigate("/rooms/detail", {
-                      state: {
-                        combo,
-                        checkInDate,
-                        checkOutDate,
-                        adults,
-                        children,
-                      },
-                    })
-                  }
-                >
-                  {/* Ảnh nền full */}
-                  <img
-                    src={img}
-                    alt={roomName}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  />
-
-                  {/* Overlay gradient từ dưới lên */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0a1628] via-[#0a1628]/40 to-transparent" />
-
-                  {/* Badge top-left */}
-                  {isMulti && (
-                    <div className="absolute top-4 left-4 bg-[var(--blue)] text-white text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full">
-                      Kết hợp {combo.rooms.length} phòng
-                    </div>
-                  )}
-
-                  {/* Rating top-right */}
-                  <div className="absolute top-4 right-4 flex items-center gap-1 bg-black/40 backdrop-blur-sm px-2.5 py-1.5 rounded-full">
-                    <Star
-                      size={11}
-                      className="fill-[var(--blue)] text-[var(--blue)]"
-                    />
-                    <span className="text-white text-xs font-black">4.8</span>
-                  </div>
-
-                  {/* Nội dung đè lên ảnh phía dưới */}
-                  <div className="absolute bottom-0 left-0 right-0 p-5">
-                    {/* Beds */}
-                    <div className="flex flex-wrap gap-1.5 mb-3">
-                      {allBeds.slice(0, 2).map((b, i) => (
-                        <span
-                          key={i}
-                          className="flex items-center gap-1 text-[10px] font-semibold text-white/70 bg-white/10 backdrop-blur-sm px-2 py-0.5 rounded-full"
-                        >
-                          <BedDouble size={9} /> {b.quantity}× {b.roomBedType}
-                        </span>
-                      ))}
-                      <span className="flex items-center gap-1 text-[10px] font-semibold text-white/70 bg-white/10 backdrop-blur-sm px-2 py-0.5 rounded-full">
-                        <Users size={9} /> {combo.totalCapacity} khách
-                      </span>
-                    </div>
-
-                    <div className="flex items-end justify-between">
-                      <div>
-                        <h3 className="text-xl font-black text-white uppercase tracking-wide leading-tight">
-                          {roomName}
-                        </h3>
-                        <div className="flex gap-3 mt-1.5">
-                          {["Wifi", "Bữa sáng", "Hủy miễn phí"].map((a) => (
-                            <span
-                              key={a}
-                              className="flex items-center gap-1 text-[10px] text-white/50"
-                            >
-                              <Check size={9} className="text-[var(--blue)]" />{" "}
-                              {a}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="text-right shrink-0 ml-4">
-                        <p className="text-2xl font-black text-white leading-none">
-                          {formatVND(totalPrice)}
-                        </p>
-                        <p className="text-[10px] text-white/40 mt-0.5">
-                          {formatVND(pricePerNight)}
-                          <span className="text-[var(--blue)]">/đêm</span>
-                        </p>
-                        <div className="mt-2 flex items-center justify-end gap-1 bg-[var(--blue)] hover:opacity-90 text-white text-xs font-black uppercase tracking-wide px-3 py-1.5 rounded-xl transition">
-                          Xem chi tiết <ChevronRight size={12} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+            {/* Không có phòng trống */}
+            {!loading && totalAll === 0 && (
+              <div className="text-center py-32 border border-dashed border-slate-200 rounded-3xl bg-white">
+                <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center mx-auto mb-4">
+                  <BedDouble size={28} className="text-slate-400" />
                 </div>
-              );
-            })}
+                <h3 className="text-xl font-bold text-slate-800 mb-2">
+                  Không tìm thấy phòng trống
+                </h3>
+                <p className="text-slate-500 text-sm mb-6">
+                  Vui lòng thử ngày khác hoặc điều chỉnh số lượng khách.
+                </p>
+                <button
+                  onClick={() => navigate("/")}
+                  className="text-sm font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 px-6 py-3 rounded-xl transition cursor-pointer"
+                >
+                  Tìm lại
+                </button>
+              </div>
+            )}
+
+            {/* Lọc rỗng */}
+            {!loading && totalAll > 0 && totalFiltered === 0 && (
+              <div className="text-center py-24 border border-dashed border-slate-200 rounded-3xl bg-white">
+                <div className="w-16 h-16 rounded-2xl bg-purple-50 flex items-center justify-center mx-auto mb-4">
+                  <Tag size={28} className="text-purple-300" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-800 mb-2">
+                  Không có kết quả phù hợp
+                </h3>
+                <p className="text-slate-500 text-sm mb-6">
+                  Bộ lọc hiện tại không khớp với bất kỳ phòng nào.
+                </p>
+                <button
+                  onClick={clearFilters}
+                  className="text-sm font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 px-6 py-3 rounded-xl transition cursor-pointer"
+                >
+                  Xóa bộ lọc
+                </button>
+              </div>
+            )}
+
+            {/* ── Phần 1: Tổ hợp đề xuất ── */}
+            {!loading && filteredCombinations.length > 0 && (
+              <section>
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-8 h-8 rounded-xl bg-purple-100 flex items-center justify-center">
+                    <Sparkles size={15} className="text-[var(--blue)]" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-800">
+                      Tổ hợp phòng được đề xuất
+                    </h2>
+                    <p className="text-xs text-slate-400">
+                      Các tổ hợp tối ưu đáp ứng đủ số lượng khách
+                    </p>
+                  </div>
+                  <span className="ml-auto text-xs font-bold text-[var(--blue)] bg-purple-50 border border-purple-100 px-2.5 py-1 rounded-full">
+                    {filteredCombinations.length} tổ hợp
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {filteredCombinations.map((combo, idx) => (
+                    <CombinationCard
+                      key={idx}
+                      combo={combo}
+                      nights={nights}
+                      onClick={() => goToDetail(combo)}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Divider */}
+            {!loading &&
+              filteredCombinations.length > 0 &&
+              filteredRooms.length > 0 && (
+                <div className="flex items-center gap-4">
+                  <div className="flex-1 h-px bg-slate-200" />
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest shrink-0">
+                    Lựa chọn thêm
+                  </span>
+                  <div className="flex-1 h-px bg-slate-200" />
+                </div>
+              )}
+
+            {/* ── Phần 2: Danh sách phòng đơn lẻ ── */}
+            {!loading && filteredRooms.length > 0 && (
+              <section>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center">
+                    <DoorOpen size={15} className="text-emerald-500" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-800">
+                      Danh sách phòng còn trống
+                    </h2>
+                    <p className="text-xs text-slate-400">
+                      Chọn một hoặc nhiều phòng để đặt cùng lúc
+                    </p>
+                  </div>
+                  <span className="ml-auto text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full">
+                    {filteredRooms.length} phòng
+                  </span>
+                </div>
+
+                <div className="flex flex-col gap-4">
+                  {filteredRooms.map((room, idx) => (
+                    <RoomCard
+                      key={idx}
+                      room={room}
+                      nights={nights}
+                      isSelected={selectedRoomIds.has(room.roomId)}
+                      onToggleSelect={() => toggleRoomSelect(room.roomId)}
+                      onViewDetail={() => goToDetailSingleRoom(room)}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
-        )}
+        </div>
       </div>
+
+      {/* ── Drawer lọc – mobile ── */}
+      {drawerOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+            onClick={() => setDrawerOpen(false)}
+          />
+          <div className="fixed right-0 top-0 bottom-0 z-50 w-80 max-w-full bg-white shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <span className="text-base font-bold text-slate-800">Bộ lọc</span>
+              <button
+                onClick={() => setDrawerOpen(false)}
+                className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-slate-100 transition cursor-pointer"
+              >
+                <X size={15} className="text-slate-500" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              <FilterPanel {...filterProps} />
+            </div>
+            <div className="p-6 border-t border-slate-100">
+              <button
+                onClick={() => setDrawerOpen(false)}
+                className="w-full h-11 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-sm font-bold transition cursor-pointer hover:from-purple-700 hover:to-indigo-700"
+              >
+                Xem {totalFiltered} kết quả
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Thanh chọn phòng – sticky bottom ── */}
+      {hasSelection && (
+        <SelectionBar
+          selectedRooms={selectedRoomObjects}
+          nights={nights}
+          onClear={removeSelectedRoom}
+          onProceed={goToDetailMultiSelect}
+        />
+      )}
     </div>
   );
 };

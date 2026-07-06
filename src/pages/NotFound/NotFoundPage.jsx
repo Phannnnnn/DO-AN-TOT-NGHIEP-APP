@@ -1,121 +1,121 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Home, BedDouble } from "lucide-react";
+import { ArrowLeft, Home, Compass } from "lucide-react";
+import logoImg from "../../assets/img/logo.svg";
 
 const NotFoundPage = () => {
-  const navigate = useNavigate();
+ const navigate = useNavigate();
 
-  return (
-    <div className="min-h-screen bg-[#0a1628] flex items-center justify-center px-6 relative overflow-hidden">
-      {/* Background glow */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div
-          className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full opacity-20"
-          style={{
-            background:
-              "radial-gradient(ellipse, rgba(245,158,11,0.4) 0%, transparent 70%)",
-          }}
-        />
-        <div
-          className="absolute bottom-0 left-0 w-96 h-96 rounded-full opacity-10"
-          style={{
-            background:
-              "radial-gradient(ellipse, rgba(245,158,11,0.3) 0%, transparent 70%)",
-          }}
-        />
-      </div>
+ return (
+ <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center px-6 relative overflow-hidden">
+ {/* Background radial glows for Light Theme */}
+ <div className="absolute inset-0 pointer-events-none">
+ <div
+ className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[700px] h-[500px] rounded-full opacity-60 blur-[130px]"
+ style={{
+ background: "radial-gradient(circle, rgba(124,58,237,0.08) 0%, rgba(236,72,153,0.04) 50%, transparent 70%)",
+ }}
+ />
+ <div
+ className="absolute -bottom-10 left-10 w-96 h-96 rounded-full opacity-40 blur-[100px]"
+ style={{
+ background: "radial-gradient(circle, rgba(59,130,246,0.06) 0%, transparent 70%)",
+ }}
+ />
+ </div>
 
-      {/* Dot pattern */}
-      <svg
-        className="absolute inset-0 w-full h-full opacity-[0.04]"
-        preserveAspectRatio="none"
-      >
-        <defs>
-          <pattern
-            id="dots"
-            width="32"
-            height="32"
-            patternUnits="userSpaceOnUse"
-          >
-            <circle cx="2" cy="2" r="1.5" fill="white" />
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#dots)" />
-      </svg>
+ {/* Subtle modern layout lines */}
+ <div className="absolute inset-0 opacity-[0.015] pointer-events-none">
+ <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+ <defs>
+ <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+ <path d="M 40 0 L 0 0 0 40" fill="none" stroke="black" strokeWidth="1" />
+ </pattern>
+ </defs>
+ <rect width="100%" height="100%" fill="url(#grid)" />
+ </svg>
+ </div>
 
-      <div className="relative z-10 text-center max-w-lg w-full">
-        {/* Icon */}
-        <div className="flex justify-center mb-8">
-          <div className="relative">
-            <div className="w-24 h-24 rounded-3xl bg-[var(--blue)]/10 border border-[var(--blue)]/20 flex items-center justify-center">
-              <BedDouble size={40} className="text-[var(--blue)]" />
-            </div>
-            {/* Glow ring */}
-            <div
-              className="absolute inset-0 rounded-3xl animate-ping opacity-20 bg-[var(--blue)]"
-              style={{ animationDuration: "2.5s" }}
-            />
-          </div>
-        </div>
+ <div className="relative z-10 text-center max-w-xl w-full flex flex-col items-center">
+ {/* Animated Compass Icon with rotating ring (LUMISTAY style) */}
+ <div className="relative mb-10 group">
+ <div className="absolute inset-0 rounded-full bg-purple-500/10 blur-xl scale-125 transition-transform duration-500 group-hover:scale-150" />
+ 
+ {/* Rotating dashed ring */}
+ <div className="absolute -inset-4 rounded-full border border-dashed border-purple-500/30 animate-[spin_20s_linear_infinite]" />
+ <div className="absolute -inset-8 rounded-full border border-dashed border-purple-500/10 animate-[spin_40s_linear_infinite_reverse]" />
+ 
+ <div className="relative w-28 h-28 rounded-full bg-white border border-purple-100 flex items-center justify-center shadow-lg transition-colors group-hover:border-purple-200">
+ <Compass size={44} className="text-[#7c3aed] transition-transform duration-500 group-hover:rotate-45" />
+ </div>
+ </div>
 
-        {/* 404 */}
-        <div className="mb-6">
-          <h1
-            className="font-black uppercase leading-none mb-2"
-            style={{
-              fontSize: "clamp(6rem, 20vw, 10rem)",
-              letterSpacing: "-0.05em",
-              background:
-                "linear-gradient(135deg, var(--blue) 0%, var(--blue) 50%, rgba(245,158,11,0.3) 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-            }}
-          >
-            404
-          </h1>
-          <div className="h-px w-24 mx-auto bg-gradient-to-r from-transparent via-[var(--blue)]/60 to-transparent" />
-        </div>
+ {/* 404 Headline */}
+ <div className="mb-6 relative">
+ <h1
+ className="font-bold leading-none tracking-tighter"
+ style={{
+ fontSize: "clamp(6.5rem, 18vw, 9.5rem)",
+ background: "linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #ec4899 100%)",
+ WebkitBackgroundClip: "text",
+ WebkitTextFillColor: "transparent",
+ filter: "drop-shadow(0 4px 12px rgba(124,58,237,0.12))",
+ }}
+ >
+ 404
+ </h1>
+ <div className="h-[2px] w-36 mx-auto bg-gradient-to-r from-transparent via-[#7c3aed]/30 to-transparent my-4" />
+ </div>
 
-        {/* Text */}
-        <h2 className="text-white font-black text-2xl uppercase tracking-wide mb-3">
-          Trang không tồn tại
-        </h2>
-        <p className="text-white/40 text-sm leading-relaxed mb-10 max-w-sm mx-auto">
-          Trang bạn đang tìm kiếm đã bị xóa hoặc không tồn tại. Vui lòng quay
-          lại trang chủ để tiếp tục.
-        </p>
+ {/* Informative Text */}
+ <h2 className="text-slate-800 font-bold text-2xl md:text-3xl tracking-wider mb-4">
+ Không tìm thấy trang
+ </h2>
+ <p className="text-slate-500 text-sm md:text-base leading-relaxed mb-10 max-w-sm mx-auto font-medium">
+ Đường dẫn bạn truy cập không tồn tại hoặc đã bị xóa. 
+ Vui lòng quay lại hoặc trở về trang chủ để tiếp tục.
+ </p>
 
-        {/* Buttons */}
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-white/15 text-white/60 hover:text-white hover:border-white/30 text-sm font-semibold transition-all cursor-pointer"
-          >
-            <ArrowLeft size={16} /> Quay lại
-          </button>
-          <button
-            onClick={() => navigate("/")}
-            className="flex items-center justify-center gap-2 px-8 py-3 rounded-xl font-black text-sm uppercase tracking-widest text-[#0a1628] transition-all hover:-translate-y-0.5 cursor-pointer"
-            style={{
-              background: "linear-gradient(135deg, var(--blue), var(--blue))",
-              boxShadow: "0 4px 20px rgba(245,158,11,0.3)",
-            }}
-          >
-            <Home size={16} /> Về trang chủ
-          </button>
-        </div>
+ {/* Action Buttons */}
+ <div className="flex flex-col sm:flex-row gap-4 justify-center w-full sm:w-auto">
+ <button
+ onClick={() => navigate(-1)}
+ className="flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-xl border border-slate-200 text-slate-600 hover:text-slate-800 hover:bg-slate-100 hover:border-slate-350 text-sm font-semibold transition-all cursor-pointer duration-300"
+ >
+ <ArrowLeft size={16} /> Quay lại
+ </button>
+ 
+ <button
+ onClick={() => navigate("/")}
+ className="flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-xl font-bold text-sm text-white transition-all duration-300 hover:-translate-y-0.5 cursor-pointer shadow-lg"
+ style={{
+ background: "linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)",
+ boxShadow: "0 6px 20px rgba(124,58,237,0.25)",
+ }}
+ onMouseEnter={(e) => {
+ e.currentTarget.style.boxShadow = "0 8px 26px rgba(124,58,237,0.4)";
+ }}
+ onMouseLeave={(e) => {
+ e.currentTarget.style.boxShadow = "0 6px 20px rgba(124,58,237,0.25)";
+ }}
+ >
+ <Home size={16} /> Về trang chủ
+ </button>
+ </div>
 
-        {/* Logo nhỏ dưới cùng */}
-        <div className="mt-14 flex items-center justify-center gap-2 opacity-30">
-          <div className="w-6 h-6 rounded-lg bg-[var(--blue)] flex items-center justify-center">
-            <span className="text-[#0a1628] font-black text-xs">V</span>
-          </div>
-          <span className="text-white text-xs font-black uppercase tracking-widest">
-            Victoria Heritage Hotel
-          </span>
-        </div>
-      </div>
-    </div>
-  );
+ {/* Branding Footer */}
+ <div className="mt-16 flex items-center justify-center gap-2.5 opacity-40 hover:opacity-60 transition-opacity duration-300">
+ <img
+ className="h-6 w-6 object-contain"
+ src={logoImg}
+ alt="LUMISTAY Logo"
+ />
+ <span className="text-slate-800 text-[11px] font-bold tracking-[0.2em]">
+ LUMISTAY
+ </span>
+ </div>
+ </div>
+ </div>
+ );
 };
 
 export default NotFoundPage;

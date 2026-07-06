@@ -1,115 +1,168 @@
-import { useLocation, Link } from "react-router-dom";
-import { useState, useEffect } from "react";
-import { Menu, X } from "lucide-react";
+import { useLocation, Link, useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { LogOut, User, Menu, X } from "lucide-react";
+import { useAuth } from "@/context/ContextProvider";
+import NavLink from "../common/NavLink";
+import UserDropdown from "../ui/UserDropDown";
+import logoImg from "../../assets/img/logo.svg";
 
 const NAV_ITEMS = [
-  { label: "Trang chủ", path: "/" },
-  { label: "Phòng & Giá", path: "/search" },
-  { label: "Dịch vụ", path: "/services" },
-  { label: "Giới thiệu", path: "/about" },
-  { label: "Liên hệ", path: "/contact" },
+ { label: "Trang chủ", path: "/" },
+ { label: "Giới thiệu", path: "/about" },
 ];
 
 const Header = () => {
-  const location = useLocation();
-  const [scrolled, setScrolled] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+ const location = useLocation();
+ const navigate = useNavigate();
+ const { user, logout } = useAuth();
+ const [scrolled, setScrolled] = useState(false);
+ const [menuOpen, setMenuOpen] = useState(false);
+ const dropdownRef = useRef(null);
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
-    window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+ useEffect(() => {
+ const onScroll = () => setScrolled(window.scrollY > 40);
+ window.addEventListener("scroll", onScroll);
+ return () => window.removeEventListener("scroll", onScroll);
+ }, []);
 
-  const isActive = (path) => location.pathname === path;
+ const isActive = (path) => location.pathname === path;
 
-  return (
-    <header
-      className={`w-full fixed top-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "bg-[var(--blue_dark)] shadow-xl py-3"
-          : "bg-[var(--blue_dark)]/70 backdrop-blur-md py-4"
-      }`}
-    >
-      <div className="max-w-7xl mx-auto px-6 flex items-center justify-between gap-6">
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2.5 shrink-0">
-          <div className="w-9 h-9 rounded-xl bg-[var(--blue)] flex items-center justify-center shadow-lg shadow-[var(--blue)]/30">
-            <span className="text-[#0a1628] font-black text-lg leading-none">
-              V
-            </span>
-          </div>
-          <div className="flex flex-col leading-none">
-            <span className="text-white font-black text-base tracking-wider uppercase">
-              Victoria
-            </span>
-            <span className="text-[var(--blue)] text-[9px] font-bold tracking-[0.25em] uppercase">
-              Heritage Hotel
-            </span>
-          </div>
-        </Link>
+ const handleLogout = () => {
+ logout();
+ navigate("/");
+ };
 
-        {/* Nav desktop */}
-        <nav className="hidden lg:flex items-center gap-0.5 flex-1 justify-center">
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
-                isActive(item.path)
-                  ? "text-[var(--blue)] bg-[var(--blue)]/10"
-                  : "text-white/80 hover:text-white hover:bg-white/10"
-              }`}
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+ return (
+ <header
+ className={`w-full fixed top-0 z-50 transition-all duration-300 border-b ${
+ scrolled
+ ? "bg-white shadow-sm border-slate-100 py-3"
+ : "bg-white/80 backdrop-blur-md border-transparent py-4"
+ }`}
+ >
+ <div className="max-w-7xl mx-auto px-6 flex items-center justify-between gap-6">
+ <Link
+ to="/"
+ className="flex items-center gap-2.5 shrink-0"
+ onClick={() => setMenuOpen(false)}
+ >
+ <img
+ className="h-10 w-10 bg-transparent object-center object-contain"
+ src={logoImg}
+ alt="logo-img"
+ />
+ <span className="text-xl font-bold text-purple-900 tracking-wider">
+ LUMISTAY
+ </span>
+ </Link>
 
-        {/* Đăng nhập */}
-        <div className="hidden md:flex items-center shrink-0">
-          <button className="text-sm font-semibold text-white/70 hover:text-white transition-colors cursor-pointer">
-            Đăng nhập
-          </button>
-        </div>
+ {/* Desktop Nav */}
+ <nav className="hidden lg:flex items-center gap-0.5 flex-1 justify-center">
+ {NAV_ITEMS.map((item) => (
+ <NavLink
+ key={item.path}
+ path={item.path}
+ isActive={isActive(item.path)}
+ label={item.label}
+ />
+ ))}
+ </nav>
 
-        {/* Mobile toggle */}
-        <button
-          onClick={() => setMenuOpen((p) => !p)}
-          className="lg:hidden p-2 text-white rounded-lg hover:bg-white/10 transition"
-        >
-          {menuOpen ? <X size={22} /> : <Menu size={22} />}
-        </button>
-      </div>
+ {/* Desktop User / Auth */}
+ <div className="hidden md:flex items-center shrink-0" ref={dropdownRef}>
+ {user ? (
+ <UserDropdown handleLogout={handleLogout} />
+ ) : (
+ <div className="flex gap-2">
+ <NavLink path={"/auth/login"} label={"Đăng nhập"} />
+ <NavLink path={"/auth/register"} label={"Đăng ký"} />
+ </div>
+ )}
+ </div>
 
-      {/* Mobile menu */}
-      {menuOpen && (
-        <div className="lg:hidden bg-[#0a1628] border-t border-white/10 px-6 py-4 flex flex-col gap-1">
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              onClick={() => setMenuOpen(false)}
-              className={`px-4 py-3 rounded-xl text-sm font-semibold transition ${
-                isActive(item.path)
-                  ? "bg-[var(--blue)]/15 text-[var(--blue)]"
-                  : "text-white/80 hover:bg-white/5 hover:text-white"
-              }`}
-            >
-              {item.label}
-            </Link>
-          ))}
-          <Link
-            to="/search"
-            onClick={() => setMenuOpen(false)}
-            className="mt-3 bg-[var(--blue)] text-[#0a1628] text-sm font-black py-3 rounded-xl text-center uppercase tracking-wide"
-          >
-            Đặt phòng ngay
-          </Link>
-        </div>
-      )}
-    </header>
-  );
+ {/* Mobile menu trigger */}
+ <button
+ onClick={() => setMenuOpen(!menuOpen)}
+ className="flex lg:hidden items-center justify-center p-2 rounded-xl text-slate-500 hover:bg-slate-100 transition duration-200 cursor-pointer shrink-0"
+ >
+ {menuOpen ? <X size={24} /> : <Menu size={24} />}
+ </button>
+ </div>
+
+ {/* Mobile navigation overlay / drawer */}
+ {menuOpen && (
+ <div className="lg:hidden fixed inset-x-0 top-[68px] bottom-0 bg-white/95 backdrop-blur-lg z-40 flex flex-col p-6 animate-fade-in border-t border-slate-100">
+ <nav className="flex flex-col gap-4 mb-8">
+ {NAV_ITEMS.map((item) => (
+ <Link
+ key={item.path}
+ to={item.path}
+ onClick={() => setMenuOpen(false)}
+ className={`text-lg font-bold px-4 py-3 rounded-xl transition duration-200 ${
+ isActive(item.path)
+ ? "bg-purple-50 text-purple-600"
+ : "text-slate-600 hover:bg-slate-50"
+ }`}
+ >
+ {item.label}
+ </Link>
+ ))}
+ </nav>
+
+ <div className="border-t border-slate-100 pt-6 mt-auto">
+ {user ? (
+ <div className="flex flex-col gap-4">
+ <div className="flex items-center gap-3 px-4 py-2 bg-slate-50 rounded-2xl">
+ <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold">
+ {user.fullName?.charAt(0).toUpperCase()}
+ </div>
+ <div>
+ <p className="font-semibold text-slate-800 text-sm">
+ {user.fullName}
+ </p>
+ <p className="text-xs text-slate-400">{user.email}</p>
+ </div>
+ </div>
+ <Link
+ to="/profile"
+ onClick={() => setMenuOpen(false)}
+ className="flex items-center gap-2 justify-center w-full h-11 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 transition"
+ >
+ <User size={16} /> Hồ sơ cá nhân
+ </Link>
+ <button
+ onClick={() => {
+ handleLogout();
+ setMenuOpen(false);
+ }}
+ className="flex items-center gap-2 justify-center w-full h-11 rounded-xl bg-red-50 text-red-500 hover:bg-red-100 transition font-bold text-sm cursor-pointer"
+ >
+ <LogOut size={16} /> Đăng xuất
+ </button>
+ </div>
+ ) : (
+ <div className="flex flex-col gap-3">
+ <Link
+ to="/auth/login"
+ onClick={() => setMenuOpen(false)}
+ className="flex items-center justify-center w-full h-11 rounded-xl bg-purple-600 text-white font-bold text-sm hover:bg-purple-700 transition"
+ >
+ Đăng nhập
+ </Link>
+ <Link
+ to="/auth/register"
+ onClick={() => setMenuOpen(false)}
+ className="flex items-center justify-center w-full h-11 rounded-xl border border-purple-200 text-purple-600 font-bold text-sm hover:bg-purple-50 transition"
+ >
+ Đăng ký
+ </Link>
+ </div>
+ )}
+ </div>
+ </div>
+ )}
+ </header>
+ );
 };
 
 export default Header;
